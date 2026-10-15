@@ -12,12 +12,16 @@ export const CLUE_TYPES = {
 };
 
 const rules = [
-  { type: "identity", label: "이름표로 보이는 단서", pattern: /이름표|학생증|명찰|내s*이름은|제s*이름은|실명/gi, confidence: 0.74 },
-  { type: "identity", label: "이름으로 보이는 텍스트", pattern: /(?:이름|성명)s*[:：]?s*[가-힣]{2,4}/gi, confidence: 0.67 },
+  { type: "identity", label: "이름표로 보이는 단서", pattern: /이름표|학생증|명찰|내\s*이름은|제\s*이름은|실명/gi },
+  { type: "identity", label: "이름으로 보이는 텍스트", pattern: /(?:이름|성명)\s*[:：]?\s*[가-힣]{2,4}|\b(?:name|student)\s*[:：]\s*[a-z]+(?:\s+[a-z]+)?/gi },
+  { type: "identity", label: "이메일 주소", pattern: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi },
+  { type: "identity", label: "전화번호", pattern: /(?:\+82[- .]?)?01[016789][- .]?\d{3,4}[- .]?\d{4}|\b\d{3}[- .]\d{3}[- .]\d{4}\b/gi },
+  { type: "organization", label: "학교·소속 이름", pattern: /\b(?:[a-z]+\s+){0,3}(?:school|university|academy|college)\b/gi },
   { type: "organization", label: "학교·교육기관 이름", pattern: /[가-힣A-Za-z0-9]+(?:초등학교|중학교|고등학교|대학교|학교|학원)/gi, confidence: 0.78 },
-  { type: "organization", label: "소속·팀 이름", pattern: /동아리|축구부|농구부|합창부|학생회|대회|팀s*[A-Za-z가-힣0-9]+/gi, confidence: 0.68 },
-  { type: "location", label: "장소·주소 단서", pattern: /[가-힣0-9]+(?:로|길)s*\d+|[가-힣]+역|[가-힣]+(?:카페|마트|공원|도서관|병원|아파트|빌딩)/gi, confidence: 0.71 },
+  { type: "organization", label: "소속·팀 이름", pattern: /동아리|축구부|농구부|합창부|학생회|대회|팀\s*[A-Za-z가-힣0-9]+/gi },
+  { type: "location", label: "장소·주소 단서", pattern: /[가-힣0-9]+(?:로|길)\s*\d+|[가-힣]+역|[가-힣]+(?:카페|마트|공원|도서관|병원|아파트|빌딩)|\b\d+\s+(?:[a-z]+\s+){1,3}(?:street|road|avenue|st|rd|ave)\b/gi },
   { type: "schedule", label: "반복되는 요일", pattern: /매주\s*(?:월|화|수|목|금|토|일)요일|(?:월|화|수|목|금|토|일)요일마다/gi, confidence: 0.84 },
+  { type: "schedule", label: "반복되는 일정", pattern: /\b(?:every\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b|\b\d{1,2}(?::\d{2})?\s*[ap]\.?m\.?/gi },
   { type: "schedule", label: "정확한 시간", pattern: /(?:오전|오후)?\s*\d{1,2}\s*(?:시|:\d{2})\s*(?:분)?/gi, confidence: 0.8 },
   { type: "schedule", label: "특정 날짜", pattern: /\d{1,2}월\s*\d{1,2}일|\d{4}[./-]\d{1,2}[./-]\d{1,2}/gi, confidence: 0.77 },
   { type: "relationship", label: "관계 단서", pattern: /친구|선생님|쌤|팀원|담임|엄마|아빠/gi, confidence: 0.62 }
@@ -27,33 +31,21 @@ function short(value) {
   return value.replace(/\s+/g, " ").trim().slice(0, 32);
 }
 
-function imageFilenameClues(post) {
-  if (!post.imageName) return [];
-  const name = post.imageName.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ");
-  const probes = [
-    ["identity", "사진 파일명의 이름표 단서", /이름표|명찰|학생증/i],
-    ["organization", "사진 파일명의 학교 단서", /학교|중학교|고등학교|학원/i],
-    ["location", "사진 파일명의 장소 단서", /역|공원|카페|학원|학교/i]
-  ];
-  return probes.filter(([, , re]) => re.test(name)).map(([type, label]) => ({
-    id: crypto.randomUUID(), type, label, sourcePostId: post.id, source: "image", confidence: 0.55,
-    detail: `사진 파일명 “${short(name)}”에서 추정`
-  }));
-}
-
 /** @param {{id:string, text?:string, imageName?:string, kind:"existing"|"new"}[]} posts */
 export function extractClues(posts) {
   const clues = [];
   for (const post of posts) {
-    const text = post.text || "";
-    for (const rule of rules) {
-      const matches = [...text.matchAll(rule.pattern)].slice(0, 2);
+    const inputs = [{ text: post.text || "", source: "text" }, ...(post.ocr?.lines || []).map(line => ({ ...line, source: "image" }))];
+    if (post.ocr?.text && !post.ocr.lines?.length) inputs.push({ text: post.ocr.text, source: "image" });
+    if (post.date) inputs.push({ text: post.date.replace("T", " "), source: "date", date: true });
+    for (const input of inputs) for (const rule of rules) {
+      const matches = [...input.text.matchAll(rule.pattern)].slice(0, 4);
       for (const match of matches) clues.push({
         id: crypto.randomUUID(), type: rule.type, label: rule.label, sourcePostId: post.id,
-        source: "text", confidence: rule.confidence, detail: `“${short(match[0])}”에서 추정`
+        source: input.source, confidence: input.source === "image" && Number.isFinite(input.confidence) ? input.confidence / 100 : null,
+        detail: `“${short(match[0])}”`, value: match[0], bbox: input.bbox || null
       });
     }
-    clues.push(...imageFilenameClues(post));
   }
   return clues;
 }
@@ -78,6 +70,7 @@ export function calculateRisk(clues, connections) {
   const types = new Set(clues.map(c => c.type));
   if (connections.some(c => c.risk === "high") && types.size >= 3) return "high";
   if (connections.some(c => c.risk === "high") || connections.length >= 2 || types.size >= 3) return "medium";
+  if (clues.some(c => c.type === "identity" && /이메일|전화번호/.test(c.label))) return "medium";
   return "low";
 }
 
@@ -109,6 +102,36 @@ export class MockAnalyzer {
   }
 }
 
+export class PhotoAnalyzer {
+  constructor(reader) { this.reader = reader; }
+  async analyze(posts, onProgress = () => {}) {
+    const enriched = [];
+    for (const post of posts) {
+      onProgress(`${post.kind === "new" ? "새" : "기존"} 게시물 분석 중…`);
+      // Always read the current pixels, including masks applied since the previous check.
+      enriched.push({ ...post, ocr: post.image ? await this.reader.read(post.image, onProgress) : null });
+    }
+    const clues = extractClues(enriched);
+    const connections = connectClues(clues);
+    return { risk: calculateRisk(clues, connections), clues, connections,
+      recommendations: recommendationsFor(clues), provider: "local-ocr",
+      imageReadings: enriched.filter(p => p.image).map(p => ({ postId: p.id, text: p.ocr.text, lines: p.ocr.lines })),
+      cleanupPostIds: cleanupCandidates(clues, connections, posts) };
+  }
+}
+
+export function cleanupCandidates(clues, connections, posts) {
+  const involved = new Set(connections.flatMap(c => c.clueIds));
+  return posts.filter(p => p.kind === "existing" && clues.some(c => c.sourcePostId === p.id && involved.has(c.id))).map(p => p.id);
+}
+
+export function compareResults(before, after) {
+  if (!before) return "";
+  return after.connections.length < before.connections.length || after.clues.length < before.clues.length
+    ? "연결 가능한 개인정보 단서가 감소했어요."
+    : "단서 감소가 확인되지 않았어요. 남은 근거를 확인해 주세요.";
+}
+
 /** A server-side implementation may call a multimodal provider without exposing a key to the browser. */
 export class RemoteAnalyzer {
   async analyze(posts) {
@@ -118,6 +141,6 @@ export class RemoteAnalyzer {
   }
 }
 
-export function getAnalyzer() {
-  return window.PUZZLEGUARD_ANALYZER_URL ? new RemoteAnalyzer() : new MockAnalyzer();
+export function getAnalyzer(reader) {
+  return new PhotoAnalyzer(reader);
 }
