@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="게시물 속 작은 단서들의 연결 가능성을 살펴보는 AI 퍼즐가드" />
+    <title>AI 퍼즐가드</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" id="welcome">
+        <div class="brand-mark" aria-hidden="true"><span>✦</span><span>⌘</span></div>
+        <p class="eyebrow">PUZZLEGUARD · PRIVACY CHECK</p>
+        <h1>AI 퍼즐가드</h1>
+        <h2>내 게시물이 나를 알려준다고?</h2>
+        <p class="hero-copy">게시물 하나만 보면 괜찮아 보여도, 여러 게시물의 단서가 연결되면 개인정보가 드러날 수 있어요.</p>
+        <button class="primary large" id="startButton">게시물 점검하기 <span>→</span></button>
+        <p class="privacy-note">🔒 사용자가 직접 선택한 사진과 글만 분석합니다.</p>
+      </section>
+
+      <section class="workspace hidden" id="workspace" aria-live="polite">
+        <header class="app-header">
+          <a class="logo" href="#welcome" aria-label="AI 퍼즐가드 처음으로"><span>✦</span> AI 퍼즐가드</a>
+          <span class="mode-badge">개발용 Mock 분석</span>
+        </header>
+        <div class="intro-row">
+          <div><p class="eyebrow">STEP 01 · 게시물 입력</p><h2>단서를 하나씩 모아볼까요?</h2><p>자동으로 가져오는 게시물은 없어요. 직접 선택한 자료만 이 화면에서 분석합니다.</p></div>
+          <button class="secondary" id="addExistingButton">+ 기존 게시물 추가</button>
+        </div>
+
+        <section aria-labelledby="existingHeading">
+          <div class="section-heading"><div><p class="eyebrow">PAST POSTS</p><h2 id="existingHeading">기존 게시물 <span id="existingCount">0</span></h2></div></div>
+          <div class="posts-grid" id="existingPosts"></div>
+          <div class="empty-state" id="existingEmpty"><span aria-hidden="true">◌</span><strong>아직 분석할 기존 게시물이 없어요.</strong><p>게시물을 추가하면 새로운 게시물과 연결해 볼 수 있어요.</p></div>
+        </section>
+
+        <section class="new-section" aria-labelledby="newHeading">
+          <div class="section-heading"><div><p class="eyebrow">NEW POST</p><h2 id="newHeading">새 게시물</h2></div><span class="required">분석 필수</span></div>
+          <p class="new-help">새로 올리려는 사진과 글을 넣어 주세요. 사진 또는 글 중 하나는 필요해요.</p>
+          <form class="post-form new-form" id="newForm" novalidate>
+            <div class="photo-area" id="newPhotoArea">
+              <input class="file-input" id="newImage" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="newUploadHelp" />
+              <label for="newImage" class="upload-label"><span aria-hidden="true">＋</span><strong>사진 추가</strong><small id="newUploadHelp">JPG, PNG, WEBP · 최대 8MB</small></label>
+              <div class="image-preview hidden"><img id="newPreview" alt="새 게시물에 선택한 사진 미리보기" /><div class="image-actions"><button type="button" class="tiny" data-edit="new">사진에서 가리기</button><button type="button" class="tiny danger-text" data-remove="new">제거</button></div></div>
+            </div>
+            <div class="form-fields"><label for="newText">게시글 내용 <span>선택</span></label><textarea id="newText" maxlength="500" placeholder="예: 오늘도 수업 끝!"></textarea><div class="field-footer"><label for="newDate">날짜·시간 <span>선택</span></label><input id="newDate" type="datetime-local" /><span id="newCounter">0 / 500</span></div></div>
+          </form>
+          <p class="inline-alert hidden" id="newError" role="alert"></p>
+        </section>
+
+        <div class="check-wrap"><button class="primary large" id="analyzeButton">✦ 퍼즐가드로 점검하기</button><p>AI의 추정이므로 사용자 확인이 필요해요.</p></div>
+        <p class="data-notice">업로드한 자료는 사용자가 선택한 분석을 위해 이 브라우저 세션에서만 사용됩니다. 실제 서비스에서는 데이터 저장 및 전송 정책을 명확하게 안내해야 합니다.</p>
+
+        <section class="loading hidden" id="loading" aria-live="assertive"><div class="spinner" aria-hidden="true"></div><div><strong id="loadingMessage">사진 속 단서 찾는 중…</strong><p>잠시만 기다려 주세요.</p></div></section>
+        <section id="results" class="hidden" tabindex="-1"></section>
+      </section>
+    </main>
+
+    <dialog id="existingDialog" class="dialog"><form method="dialog" id="existingForm" class="dialog-content" novalidate><button class="close" type="button" data-close-existing aria-label="닫기">×</button><p class="eyebrow">PAST POST</p><h2>기존 게시물 추가</h2><p class="dialog-copy">사진 또는 글을 입력해 주세요.</p><div class="dialog-upload"><input class="file-input" id="existingImage" type="file" accept="image/jpeg,image/png,image/webp" /><label for="existingImage" class="upload-label"><span aria-hidden="true">＋</span><strong>사진 선택</strong><small>JPG, PNG, WEBP · 최대 8MB</small></label><div class="image-preview hidden"><img id="existingPreview" alt="기존 게시물에 선택한 사진 미리보기" /><button type="button" class="tiny danger-text" data-remove="existing">제거</button></div></div><label for="existingText">게시글 내용 <span>선택</span></label><textarea id="existingText" maxlength="500" placeholder="기존 게시물 내용을 입력하세요"></textarea><label for="existingDate">날짜·시간 <span>선택</span></label><input id="existingDate" type="datetime-local" /><p class="inline-alert hidden" id="existingError" role="alert"></p><div class="dialog-actions"><button class="secondary" type="button" data-close-existing>취소</button><button class="primary" type="submit">게시물 추가</button></div></form></dialog>
+
+    <dialog id="editorDialog" class="dialog editor-dialog"><div class="dialog-content"><button class="close" id="closeEditor" aria-label="닫기">×</button><p class="eyebrow">PHOTO EDIT</p><h2>사진에서 가릴 부분 선택</h2><p class="dialog-copy">사진 위를 드래그하면 선택한 부분이 가려집니다. 원본은 브라우저 밖으로 전송되지 않아요.</p><canvas id="editCanvas" aria-label="가릴 부분을 드래그해서 선택하는 사진 편집기"></canvas><div class="dialog-actions"><button class="secondary" id="resetMask">처음부터</button><button class="primary" id="saveMask">가리기 적용</button></div></div></dialog>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
