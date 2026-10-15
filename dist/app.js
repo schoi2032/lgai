@@ -80,7 +80,7 @@ function renderResults(result) {
   if (state.newPost.image) {
     const link = document.createElement("a");
     link.className = "secondary photo-download"; link.href = state.newPost.image;
-    link.download = "puzzleguard-photo.png"; link.textContent = "현재 새 게시물 사진 저장";
+    link.download = "SNS 개인정보 지킴이-사진.png"; link.textContent = "현재 새 게시물 사진 저장";
     $("#results .check-wrap").append(link);
   }
   for (const image of document.querySelectorAll("[data-evidence]")) {

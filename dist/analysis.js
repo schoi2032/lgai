@@ -1,5 +1,5 @@
 /**
- * Provider-neutral privacy clue analysis for the PuzzleGuard MVP.
+ * Provider-neutral privacy clue analysis for SNS 개인정보 지킴이.
  * A production provider can replace MockAnalyzer without changing the UI.
  */
 
